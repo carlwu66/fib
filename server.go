@@ -93,7 +93,7 @@ func main() {
 		userSql := "SELECT count(*) from newfib WHERE value < $1"
 		err := db.QueryRow(userSql, u).Scan(&myValue)
 		if err == nil {
-			fmt.Fprintf(w, "%v\n", myValue)
+			fmt.Fprintf(w, "%v", myValue)
 		}
 	})
 
