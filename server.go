@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-    "time"
 
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 )
-
 
 const (
 	host     = "localhost"
@@ -21,31 +19,25 @@ const (
 )
 
 func Fibonacci(n uint64, db *sql.DB) uint64 {
-	time.Sleep(5 * time.Second)
-	if n <= 1 {
-		insertDynStmt := `insert into "newfib"("mykey", "value") values($1, $2)`
-		_, e := db.Exec(insertDynStmt, n, n)
-		CheckError(e)
-		return n
-	}
-
 	var myValue uint64
 	userSql := "SELECT value from newfib WHERE mykey = $1"
+	//check to see if this entry is in the table
 	err := db.QueryRow(userSql, n).Scan(&myValue)
 	if err == nil {
+		//in the table, return immediately
 		return myValue
 	} else {
-		fmt.Printf("Failed to execute query:%v\n", err)
-
+		//not in the table, need to create new entry
+		fmt.Printf("Failed to get entry directly:%v\n", err)
 		value := Fibonacci(n-1, db) + Fibonacci(n-2, db)
 		insertDynStmt := `insert into "newfib"("mykey", "value") values($1, $2)`
 		_, e := db.Exec(insertDynStmt, n, value)
 		CheckError(e)
 		return value
 	}
-
 }
 
+//This is a simple debugging panic for error
 func CheckError(e error) {
 	if e != nil {
 		panic(e)
@@ -72,10 +64,18 @@ func main() {
 	_, e := db.Exec(deleteStmt)
 	CheckError(e)
 
+	//we store the first two elements of Fib series as a start
+	insertDynStmt := `insert into "newfib"("mykey", "value") values($1, $2)`
+	_, e = db.Exec(insertDynStmt, 0, 0)
+	CheckError(e)
+	_, e = db.Exec(insertDynStmt, 1, 1)
+	CheckError(e)
+
 	//os.Exit(1)
 
 	r := mux.NewRouter()
 
+	//API to generate Fib number
 	r.HandleFunc("/fibonacci/{number}", func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		number := vars["number"]
@@ -84,6 +84,7 @@ func main() {
 		fmt.Fprintf(w, "%v", fib)
 	})
 
+	//API to report the Fib entry number within a range
 	r.HandleFunc("/order/{number}", func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		number := vars["number"]
@@ -92,13 +93,16 @@ func main() {
 		userSql := "SELECT count(*) from newfib WHERE value < $1"
 		err := db.QueryRow(userSql, u).Scan(&myValue)
 		if err == nil {
-			fmt.Fprintf(w, "You've get order number %v\n", myValue)
+			fmt.Fprintf(w, "%v\n", myValue)
 		}
 	})
 
+	//API to clear all Fib entry in table
 	r.HandleFunc("/clear", func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		fmt.Fprintf(w, "You've get number %+v\n", vars)
+		deleteStmt := `delete from newfib`
+		_, e := db.Exec(deleteStmt)
+		CheckError(e)
+		fmt.Fprintf(w, "ok")
 	})
 
 	http.ListenAndServe(":8001", r)
