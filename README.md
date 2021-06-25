@@ -10,5 +10,6 @@
 
 5. run "make test" to run test cases, it will do test twice, we can see the time difference.
 
-Notice: I create a docker file. Since bring both psql server and fib server to docker env will ccause some extra work, we will discuss this in the interview process.
-
+Notice: 
+1. I create a docker file. Since bring both psql server and fib server to docker env will ccause some extra work, we will discuss this in the interview process.
+2. Current code works for n<= 46
